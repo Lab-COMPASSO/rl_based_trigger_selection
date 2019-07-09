@@ -3,19 +3,6 @@ from c_vnf import VNF
 from mec import MEC
 
 
-def migrate(vnf_id, mec_dest_id):
-
-    pass
-
-
-def scale_up(vnf_id, resource_type, resource_unit):
-    pass
-
-
-def scale_down(vnf_id, resource_type, resource_unit):
-    pass
-
-
 def orchestration():
     nb_mec = 3
     nb_vnfs = 3

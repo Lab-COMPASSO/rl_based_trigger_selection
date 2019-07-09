@@ -2,17 +2,12 @@ import random
 
 
 class VNF:
-    def __init__(self, vnf_name, pm, ethnicity="", cpu=0, ram=0, disk=0):
+    def __init__(self, vnf_name, ethnicity="", cpu=0, ram=0, disk=0):
         self.vnf_name = vnf_name
         self.ethnicity = ethnicity
         self.cpu = cpu
         self.ram = ram
         self.disk = disk
-
-        pm.set_member(vnf_name)
-        pm.set_live_cpu(self.cpu)
-        pm.set_live_ram(self.ram)
-        pm.set_live_disk(self.disk)
 
     def set_ethnicity(self, ethnicity):
         self.ethnicity = ethnicity

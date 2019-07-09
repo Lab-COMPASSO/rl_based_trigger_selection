@@ -30,28 +30,49 @@ class ENV:
         self.mec = {}
         self.vnfs = {}
 
+    def view_infrastructure(self):
+        """
+        :return: a view of the current configuration of the environment
+        """
+
+        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+        for i in range(self.nb_mec):
+            print("*********************************--  MEC number {} --******************************".format(i+1))
+            print(self.mec[i].mec_name)
+            print(self.mec[i].get_member())
+            print(self.mec[i].cpu)
+            print(self.mec[i].ram)
+            print(self.mec[i].disk)
+        print("###########################################################################")
+
+        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+        for i in range(self.nb_vnfs):
+            print("*********************************--  VNF number {} --******************************".format(i+1))
+            print(self.vnfs[i].vnf_name)
+            print(self.vnfs[i].cpu)
+            print(self.vnfs[i].ram)
+            print(self.vnfs[i].disk)
+        print("###########################################################################")
+
     def get_mec(self):
+        """
+        :return: a list of MECs in the network
+        """
         return self.mec
 
     def generate_mec(self):
         """
-        :return: a list of MECs in the network
+        :return: generate MECs in the environment
         """
 
         for i in range(self.nb_mec):
             self.mec[i] = MEC(i, randint(self.min_cpu, self.max_cpu), randint(self.min_ram, self.max_ram),
                               randint(self.min_disk, self.max_disk))
-            # print(self.mec[i].mec_name)
-            # print(self.mec[i].cpu_max)
-            # print(self.mec[i].ram_max)
-            # print(self.mec[i].disk_max)
-            # print(self.mec[i].get_rat())
 
     def generate_vnfs(self):
         """
-        :return: the generated VNFs
+        :return: generate VNFs in the environment
         """
-
         i = 0
         while i < self.nb_vnfs:
             for mec in sample(list(self.mec), 1):
@@ -60,33 +81,34 @@ class ENV:
                 disk = randint(self.min_c_disk, self.max_c_disk)
                 if self.mec[mec].cpu_availability(cpu) and self.mec[mec].ram_availability(ram) and \
                         self.mec[mec].disk_availability(disk):
-                    self.vnfs[i] = VNF(vnf_name=i, pm=self.mec[mec], ethnicity=str(mec),
-                                       cpu=cpu,
-                                       ram=ram,
-                                       disk=disk)
+                    self.vnfs[i] = VNF(vnf_name=i, ethnicity=str(mec), cpu=cpu, ram=ram, disk=disk)
+                    self.mec[mec].set_member(i)
+                    self.mec[mec].set_live_cpu(cpu)
+                    self.mec[mec].set_live_ram(ram)
+                    self.mec[mec].set_live_disk(disk)
                     i += 1
 
-            # print(self.vnfs[i].vnf_name)
-            # print(self.vnfs[i].ethnicity)
-            # print(self.vnfs[i].cpu)
-            # print(self.vnfs[i].ram)
-            # print(self.vnfs[i].disk)
-            # print(self.vnfs[i].get_sct())
-        # print(self.mec[0].get_rat())
-        for j in range(self.nb_mec):
-            print("mec{}".format(j))
-            print(self.mec[j].get_member())
-
     def get_rat(self, mec_id):
+        """
+        :param mec_id:
+        :return: data related to the RAT trigger
+        """
         cpu_percentage = round(self.mec[mec_id].live_cpu * 100 / self.mec[mec_id].cpu_max, 2)
         ram_percentage = round(self.mec[mec_id].live_ram * 100 / self.mec[mec_id].ram_max, 2)
         disk_percentage = round(self.mec[mec_id].live_disk * 100 / self.mec[mec_id].disk_max, 2)
         return cpu_percentage, ram_percentage, disk_percentage
 
     def get_sct(self, vnf_id):
+        """
+        :param vnf_id:
+        :return: data related to the SCT trigger
+        """
         return self.vnfs[vnf_id].get_live_cpu(), self.vnfs[vnf_id].get_live_ram()
 
     def get_state(self):
+        """
+        :return: a given state of the environment in a given time-step 't'
+        """
         state = []
         for i in range(self.nb_mec):
             temp = []
@@ -100,6 +122,95 @@ class ENV:
                 state.append(sub_state)
         print(state)
         return state
+
+    def migrate(self, vnf_id, mec_dest_id):
+        """
+        :param vnf_id:
+        :param mec_dest_id:
+        :return: migrate a given container from one MEC to another one, True if migrated otherwise False
+        """
+        if int(self.vnfs[vnf_id].ethnicity) == mec_dest_id:
+            print("Container cannot be migrated to the same host !!!")
+            return False
+        if self.mec[mec_dest_id].cpu_availability(self.vnfs[vnf_id].cpu) and \
+                self.mec[mec_dest_id].ram_availability(self.vnfs[vnf_id].ram) and \
+                self.mec[mec_dest_id].disk_availability(self.vnfs[vnf_id].disk):
+
+            # Remove the container's details from the source MEC
+            self.mec[int(self.vnfs[vnf_id].ethnicity)].del_member(vnf_id)
+            self.mec[int(self.vnfs[vnf_id].ethnicity)].del_live_cpu(self.vnfs[vnf_id].cpu)
+            self.mec[int(self.vnfs[vnf_id].ethnicity)].del_live_ram(self.vnfs[vnf_id].ram)
+            self.mec[int(self.vnfs[vnf_id].ethnicity)].del_live_disk(self.vnfs[vnf_id].disk)
+            self.mec[int(self.vnfs[vnf_id].ethnicity)].cpu = self.mec[int(self.vnfs[vnf_id].ethnicity)].cpu + \
+                self.vnfs[vnf_id].cpu
+            self.mec[int(self.vnfs[vnf_id].ethnicity)].ram = self.mec[int(self.vnfs[vnf_id].ethnicity)].ram + \
+                self.vnfs[vnf_id].ram
+            self.mec[int(self.vnfs[vnf_id].ethnicity)].disk = self.mec[int(self.vnfs[vnf_id].ethnicity)].disk + \
+                self.vnfs[vnf_id].disk
+
+            # Addition of the container's details to the destination MEC
+            self.mec[mec_dest_id].set_member(vnf_id)
+            self.mec[mec_dest_id].set_live_cpu(self.vnfs[vnf_id].cpu)
+            self.mec[mec_dest_id].set_live_ram(self.vnfs[vnf_id].ram)
+            self.mec[mec_dest_id].set_live_disk(self.vnfs[vnf_id].disk)
+            return True
+
+        # Roll-back procedure in case of migration's failure
+        return False
+
+    def scale_up(self, vnf_id, resource_type):
+        if resource_type == "CPU":
+            cpu_resource_unit = randint(self.min_c_cpu, self.max_c_cpu)
+            if self.mec[int(self.vnfs[vnf_id].ethnicity)].cpu_availability(cpu_resource_unit):
+                self.vnfs[vnf_id].cpu = self.vnfs[vnf_id].cpu + cpu_resource_unit
+                return True
+        elif resource_type == "RAM":
+            ram_resource_unit = randint(self.min_c_ram, self.max_c_ram)
+            if self.mec[int(self.vnfs[vnf_id].ethnicity)].ram_availability(ram_resource_unit):
+                self.vnfs[vnf_id].ram = self.vnfs[vnf_id].ram + ram_resource_unit
+                return True
+        elif resource_type == "DISK":
+            disk_resource_unit = randint(self.min_c_disk, self.max_c_disk)
+            if self.mec[int(self.vnfs[vnf_id].ethnicity)].disk_availability(disk_resource_unit):
+                self.vnfs[vnf_id].disk = self.vnfs[vnf_id].disk + disk_resource_unit
+                return True
+        return False
+
+    def scale_down(self, vnf_id, resource_type):
+        if resource_type == "CPU":
+            if self.vnfs[vnf_id].cpu == 1:
+                print("Container with 1 core CPU cannot scale down !!!")
+                return False
+            cpu_resource_unit = randint(self.min_c_cpu, self.max_c_cpu)
+            while self.vnfs[vnf_id].cpu - cpu_resource_unit <= 0:
+                cpu_resource_unit = randint(self.min_c_cpu, self.max_c_cpu)
+            self.mec[int(self.vnfs[vnf_id].ethnicity)].cpu = self.mec[int(self.vnfs[vnf_id].ethnicity)].cpu + \
+                cpu_resource_unit
+            self.vnfs[vnf_id].cpu = self.vnfs[vnf_id].cpu - cpu_resource_unit
+            return True
+        elif resource_type == "RAM":
+            if self.vnfs[vnf_id].ram == 1:
+                print("Container with 1 GB of Memory cannot scale down !!!")
+                return False
+            ram_resource_unit = randint(self.min_c_ram, self.max_c_ram)
+            while self.vnfs[vnf_id].ram - ram_resource_unit <= 0:
+                ram_resource_unit = randint(self.min_c_ram, self.max_c_ram)
+            self.mec[int(self.vnfs[vnf_id].ethnicity)].ram = self.mec[int(self.vnfs[vnf_id].ethnicity)].ram + \
+                ram_resource_unit
+            self.vnfs[vnf_id].ram = self.vnfs[vnf_id].ram - ram_resource_unit
+            return True
+        elif resource_type == "DISK":
+            if self.vnfs[vnf_id].disk == 512:
+                print("Container with 512 MB of Disk cannot scale down !!!")
+                return False
+            disk_resource_unit = randint(self.min_c_disk, self.max_c_disk)
+            while self.vnfs[vnf_id].disk - disk_resource_unit <= 0:
+                disk_resource_unit = randint(self.min_c_disk, self.max_c_disk)
+            self.mec[int(self.vnfs[vnf_id].ethnicity)].disk = self.mec[int(self.vnfs[vnf_id].ethnicity)].disk + \
+                disk_resource_unit
+            self.vnfs[vnf_id].disk = self.vnfs[vnf_id].disk - disk_resource_unit
+            return True
+        return False
 
     def save_topology(self, file_name):
         """
