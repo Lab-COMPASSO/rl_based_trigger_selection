@@ -1,1 +1,1 @@
-# rl_based_trigger_selection
+# Selecting trigger to enable network slice mobility using Reinforcement Learning (RL) as well as Deep Reinforcement Learning (DRL) techniques.
