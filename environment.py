@@ -254,19 +254,24 @@ class ENV:
         return alpha * action_time + beta * resource_usage
 
     def select_action(self):
-        # TODO: Maybe wrong as actions should depend on a policy, later to be verified.
+        # This function is called when a random action is required.
         set_of_actions = {0: 'migrate', 1: 'scale_up', 2: 'scale_down'}
         action = randint(0, 2)
         vnf_id = randint(0, self.nb_vnfs)
+        resource_type_num = randint(0, 2)
+        if resource_type_num == 0:
+            resource_type = 'CPU'
+        elif resource_type_num == 1:
+            resource_type = 'RAM'
+        else:
+            resource_type = 'DISK'
         if action == 0:
             mec_dest_id = randint(0, self.nb_mec)
-            return vnf_id, mec_dest_id
+            return set_of_actions[0], vnf_id, mec_dest_id
         elif action == 1:
-            resource_type = ''
-            return vnf_id, resource_type
+            return set_of_actions[1], vnf_id, resource_type
         else:
-            resource_type = ''
-            return vnf_id, resource_type
+            return set_of_actions[2], vnf_id, resource_type
 
     def save_topology(self, file_name):
         """
