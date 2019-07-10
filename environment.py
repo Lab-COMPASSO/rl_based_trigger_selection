@@ -2,6 +2,7 @@ from random import randint, sample
 from mec import MEC
 from c_vnf import VNF
 import pickle
+import time
 
 
 class ENV:
@@ -129,9 +130,12 @@ class ENV:
         :param mec_dest_id:
         :return: migrate a given container from one MEC to another one, True if migrated otherwise False
         """
+        # Control time
+        migration_time = (self.max_c_disk / 1000) + 100
         if int(self.vnfs[vnf_id].ethnicity) == mec_dest_id:
             print("Container cannot be migrated to the same host !!!")
-            return False
+            print('same-host: {}'.format(migration_time))
+            return False, (1 / migration_time)
         if self.mec[mec_dest_id].cpu_availability(self.vnfs[vnf_id].cpu) and \
                 self.mec[mec_dest_id].ram_availability(self.vnfs[vnf_id].ram) and \
                 self.mec[mec_dest_id].disk_availability(self.vnfs[vnf_id].disk):
@@ -153,64 +157,116 @@ class ENV:
             self.mec[mec_dest_id].set_live_cpu(self.vnfs[vnf_id].cpu)
             self.mec[mec_dest_id].set_live_ram(self.vnfs[vnf_id].ram)
             self.mec[mec_dest_id].set_live_disk(self.vnfs[vnf_id].disk)
-            return True
+
+            # Migration time based on the disk size
+            migration_time = self.vnfs[vnf_id].disk / 1000
+            time.sleep(migration_time)
+            print('migration: {}'.format(migration_time))
+            return True, (1 / migration_time)
 
         # Roll-back procedure in case of migration's failure
-        return False
+        # Control time
+        print('roll-back: {}'.format(migration_time))
+        return False, (1 / migration_time)
 
     def scale_up(self, vnf_id, resource_type):
+        """
+        :param vnf_id:
+        :param resource_type:
+        :return: A Boolean giving the status of the scale up operation
+        """
+        scale_up_time = (self.min_c_disk / 2) / 1000
+        failure_time = (self.max_c_disk / 1000) + 100
+
         if resource_type == "CPU":
             cpu_resource_unit = randint(self.min_c_cpu, self.max_c_cpu)
             if self.mec[int(self.vnfs[vnf_id].ethnicity)].cpu_availability(cpu_resource_unit):
                 self.vnfs[vnf_id].cpu = self.vnfs[vnf_id].cpu + cpu_resource_unit
-                return True
+                return True, (1 / scale_up_time)
         elif resource_type == "RAM":
             ram_resource_unit = randint(self.min_c_ram, self.max_c_ram)
             if self.mec[int(self.vnfs[vnf_id].ethnicity)].ram_availability(ram_resource_unit):
                 self.vnfs[vnf_id].ram = self.vnfs[vnf_id].ram + ram_resource_unit
-                return True
+                return True, (1 / scale_up_time)
         elif resource_type == "DISK":
             disk_resource_unit = randint(self.min_c_disk, self.max_c_disk)
             if self.mec[int(self.vnfs[vnf_id].ethnicity)].disk_availability(disk_resource_unit):
                 self.vnfs[vnf_id].disk = self.vnfs[vnf_id].disk + disk_resource_unit
-                return True
-        return False
+                return True, (1 / scale_up_time)
+        return False, (1 / failure_time)
 
     def scale_down(self, vnf_id, resource_type):
+        """
+        :param vnf_id:
+        :param resource_type:
+        :return: A Boolean giving the status of the scale down operation
+        """
+        scale_down_time = ((self.min_c_disk / 2) + 128) / 1000
+        failure_time = (self.max_c_disk / 1000) + 100
+
         if resource_type == "CPU":
             if self.vnfs[vnf_id].cpu == 1:
                 print("Container with 1 core CPU cannot scale down !!!")
-                return False
+                return False, (1 / failure_time)
             cpu_resource_unit = randint(self.min_c_cpu, self.max_c_cpu)
             while self.vnfs[vnf_id].cpu - cpu_resource_unit <= 0:
                 cpu_resource_unit = randint(self.min_c_cpu, self.max_c_cpu)
             self.mec[int(self.vnfs[vnf_id].ethnicity)].cpu = self.mec[int(self.vnfs[vnf_id].ethnicity)].cpu + \
                 cpu_resource_unit
             self.vnfs[vnf_id].cpu = self.vnfs[vnf_id].cpu - cpu_resource_unit
-            return True
+            return True, (1 / scale_down_time)
         elif resource_type == "RAM":
             if self.vnfs[vnf_id].ram == 1:
                 print("Container with 1 GB of Memory cannot scale down !!!")
-                return False
+                return False, (1 / failure_time)
             ram_resource_unit = randint(self.min_c_ram, self.max_c_ram)
             while self.vnfs[vnf_id].ram - ram_resource_unit <= 0:
                 ram_resource_unit = randint(self.min_c_ram, self.max_c_ram)
             self.mec[int(self.vnfs[vnf_id].ethnicity)].ram = self.mec[int(self.vnfs[vnf_id].ethnicity)].ram + \
                 ram_resource_unit
             self.vnfs[vnf_id].ram = self.vnfs[vnf_id].ram - ram_resource_unit
-            return True
+            return True, (1 / scale_down_time)
         elif resource_type == "DISK":
             if self.vnfs[vnf_id].disk == 512:
                 print("Container with 512 MB of Disk cannot scale down !!!")
-                return False
+                return False, (1 / failure_time)
             disk_resource_unit = randint(self.min_c_disk, self.max_c_disk)
             while self.vnfs[vnf_id].disk - disk_resource_unit <= 0:
                 disk_resource_unit = randint(self.min_c_disk, self.max_c_disk)
             self.mec[int(self.vnfs[vnf_id].ethnicity)].disk = self.mec[int(self.vnfs[vnf_id].ethnicity)].disk + \
                 disk_resource_unit
             self.vnfs[vnf_id].disk = self.vnfs[vnf_id].disk - disk_resource_unit
-            return True
-        return False
+            return True, (1 / scale_down_time)
+        return False, (1 / failure_time)
+
+    def reward(self, action_time):
+        resource_usage = 0
+        for i in range(self.nb_mec):
+            if len(self.mec[i].get_member()) != 0:
+                mec_cpu_percentage, mec_ram_percentage, mec_disk_percentage = self.get_rat(i)
+                resource_usage += (1 / mec_cpu_percentage) + (1 / mec_ram_percentage) + (1 / mec_disk_percentage)
+        # Normalization
+        action_time = action_time / ((self.max_c_disk / 1000) + 100)
+        resource_usage = resource_usage / 100
+        # TODO: we can add a coefficient to promote one time over the usage or the opposite.
+        alpha = 1
+        beta = 1
+        return alpha * action_time + beta * resource_usage
+
+    def select_action(self):
+        # TODO: Maybe wrong as actions should depend on a policy, later to be verified.
+        set_of_actions = {0: 'migrate', 1: 'scale_up', 2: 'scale_down'}
+        action = randint(0, 2)
+        vnf_id = randint(0, self.nb_vnfs)
+        if action == 0:
+            mec_dest_id = randint(0, self.nb_mec)
+            return vnf_id, mec_dest_id
+        elif action == 1:
+            resource_type = ''
+            return vnf_id, resource_type
+        else:
+            resource_type = ''
+            return vnf_id, resource_type
 
     def save_topology(self, file_name):
         """
