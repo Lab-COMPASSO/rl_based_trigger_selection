@@ -3,6 +3,7 @@ from mec import MEC
 from c_vnf import VNF
 import pickle
 import time
+import math
 
 
 class ENV:
@@ -30,6 +31,7 @@ class ENV:
 
         self.mec = {}
         self.vnfs = {}
+        self.initial_state = []
 
     def view_infrastructure(self):
         """
@@ -106,7 +108,7 @@ class ENV:
         """
         return self.vnfs[vnf_id].get_live_cpu(), self.vnfs[vnf_id].get_live_ram()
 
-    def get_state(self):
+    def get_state(self, initial_state=False):
         """
         :return: a given state of the environment in a given time-step 't'
         """
@@ -117,11 +119,43 @@ class ENV:
                 mec_cpu_percentage, mec_ram_percentage, mec_disk_percentage = self.get_rat(i)
                 temp.extend([mec_cpu_percentage, mec_ram_percentage, mec_disk_percentage])
                 for j in range(len(self.mec[i].get_member())):
-                    vnf_cpu_percentage, vnf_ram_percentage = self.get_sct(self.vnfs[j].vnf_name)
+                    vnf_cpu_percentage, vnf_ram_percentage = self.get_sct(
+                        self.vnfs[self.mec[i].get_member()[j]].vnf_name)
                     temp.extend([vnf_cpu_percentage, vnf_ram_percentage])
                 sub_state = tuple(temp)
                 state.append(sub_state)
         print(state)
+        if initial_state:
+            if not self.initial_state:
+                self.initial_state = state
+            else:
+                return self.initial_state
+        return state
+
+    def get_state_(self, initial_state=False):
+        """
+        :return: a given state of the environment in a given time-step 't'
+        """
+        state = []
+        for i in range(self.nb_mec):
+            temp = []
+            mec_cpu_percentage, mec_ram_percentage, mec_disk_percentage = self.get_rat(i)
+            temp.extend([mec_cpu_percentage, mec_ram_percentage, mec_disk_percentage])
+            for j in range(self.nb_vnfs):
+                for k in range(len(self.mec[i].get_member())):
+                    vnf_cpu_percentage = 0
+                    vnf_ram_percentage = 0
+                    if self.vnfs[j].vnf_name == self.mec[i].get_member()[k]:
+                        vnf_cpu_percentage, vnf_ram_percentage = self.get_sct(self.vnfs[j].vnf_name)
+                    temp.extend([vnf_cpu_percentage, vnf_ram_percentage])
+            sub_state = tuple(temp)
+            state.append(sub_state)
+        print(state)
+        if initial_state:
+            if not self.initial_state:
+                self.initial_state = state
+            else:
+                return self.initial_state
         return state
 
     def migrate(self, vnf_id, mec_dest_id):
@@ -133,7 +167,7 @@ class ENV:
         # Control time
         migration_time = (self.max_c_disk / 1000) + 100
         if int(self.vnfs[vnf_id].ethnicity) == mec_dest_id:
-            print("Container cannot be migrated to the same host !!!")
+            print("Container cannot be migrated to the same host !!! == Do Nothing")
             print('same-host: {}'.format(migration_time))
             return False, (1 / migration_time)
         if self.mec[mec_dest_id].cpu_availability(self.vnfs[vnf_id].cpu) and \
@@ -240,6 +274,10 @@ class ENV:
         return False, (1 / failure_time)
 
     def reward(self, action_time):
+        """
+        :param action_time:
+        :return: a reward for a given action in a given time-step at a given state
+        """
         resource_usage = 0
         for i in range(self.nb_mec):
             if len(self.mec[i].get_member()) != 0:
@@ -253,25 +291,40 @@ class ENV:
         beta = 1
         return alpha * action_time + beta * resource_usage
 
-    def select_action(self):
-        # This function is called when a random action is required.
-        set_of_actions = {0: 'migrate', 1: 'scale_up', 2: 'scale_down'}
-        action = randint(0, 2)
-        vnf_id = randint(0, self.nb_vnfs)
-        resource_type_num = randint(0, 2)
-        if resource_type_num == 0:
-            resource_type = 'CPU'
-        elif resource_type_num == 1:
-            resource_type = 'RAM'
+    def action(self):
+        """
+        :return: Select a random action value
+        """
+        return randint(1, len(self.vnfs) * (len(self.mec) + 2 * 3))
+
+    def step(self, action):
+        """
+        :param action:
+        :return: a step based on a received action to modify the environment, new state and a reward will be observed
+        as well
+        """
+        # Populating the set of actions to be used later as a manual
+        set_of_actions = {}
+        i = 0
+        while i < len(self.mec):
+            set_of_actions[i] = self.mec[i].mec_name
+            i += 1
+        set_of_actions[i], set_of_actions[i+3] = "CPU", "CPU"
+        set_of_actions[i+1], set_of_actions[i+4] = "RAM", "RAM"
+        set_of_actions[i+2], set_of_actions[i+5] = "DISK", "DISK"
+
+        # Gathering vnf_id and type of the taken action
+        vnf_id = math.ceil(action / (len(self.mec) + 2 * 3)) - 1
+        action = (len(self.mec) + 2 * 3) * (1 - (vnf_id + 1)) + action - 1
+        if action < len(self.mec):
+            # Migrating or doing nothing is the source mec_id equal destination mec_id
+            self.migrate(vnf_id, set_of_actions[action])
+        elif len(self.mec) <= action < len(self.mec) + 3:
+            # Scaling Up
+            self.scale_up(vnf_id, set_of_actions[action])
         else:
-            resource_type = 'DISK'
-        if action == 0:
-            mec_dest_id = randint(0, self.nb_mec)
-            return set_of_actions[0], vnf_id, mec_dest_id
-        elif action == 1:
-            return set_of_actions[1], vnf_id, resource_type
-        else:
-            return set_of_actions[2], vnf_id, resource_type
+            # Scaling Down print("scale down")
+            self.scale_down(vnf_id, set_of_actions[action])
 
     def save_topology(self, file_name):
         """
