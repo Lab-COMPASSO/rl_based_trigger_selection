@@ -318,13 +318,14 @@ class ENV:
         action = (len(self.mec) + 2 * 3) * (1 - (vnf_id + 1)) + action - 1
         if action < len(self.mec):
             # Migrating or doing nothing is the source mec_id equal destination mec_id
-            self.migrate(vnf_id, set_of_actions[action])
+            operation_success, action_time = self.migrate(vnf_id, set_of_actions[action])
         elif len(self.mec) <= action < len(self.mec) + 3:
             # Scaling Up
-            self.scale_up(vnf_id, set_of_actions[action])
+            operation_success, action_time = self.scale_up(vnf_id, set_of_actions[action])
         else:
             # Scaling Down print("scale down")
-            self.scale_down(vnf_id, set_of_actions[action])
+            operation_success, action_time = self.scale_down(vnf_id, set_of_actions[action])
+        return self.get_state_(), self.reward(action_time), False, False
 
     def save_topology(self, file_name):
         """
