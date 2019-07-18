@@ -45,7 +45,7 @@ def orchestration():
     env.generate_vnfs()
     env.save_topology("environment")
 
-    action_size = len(env.mec) + 2 * len(env.vnfs)
+    action_size = len(env.vnfs) * (len(env.mec) + 2 * 3)
     print('action_size: {}'.format(action_size))
     state_size = (100 ** (3 + 2 * len(env.vnfs))) ** len(env.mec)
     print('state_size: {}'.format(state_size))

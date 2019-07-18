@@ -143,14 +143,32 @@ class ENV:
             temp.extend([mec_cpu_percentage, mec_ram_percentage, mec_disk_percentage])
             for j in range(self.nb_vnfs):
                 for k in range(len(self.mec[i].get_member())):
-                    vnf_cpu_percentage = 0
-                    vnf_ram_percentage = 0
                     if self.vnfs[j].vnf_name == self.mec[i].get_member()[k]:
                         vnf_cpu_percentage, vnf_ram_percentage = self.get_sct(self.vnfs[j].vnf_name)
-                    temp.extend([vnf_cpu_percentage, vnf_ram_percentage])
+                        temp.extend([vnf_cpu_percentage, vnf_ram_percentage])
             sub_state = tuple(temp)
             state.append(sub_state)
         print(state)
+        if initial_state:
+            if not self.initial_state:
+                self.initial_state = state
+            else:
+                return self.initial_state
+        return state
+
+    def get_dqn_state(self, initial_state=False):
+        """
+        :return: a given state of the environment in a given time-step 't'
+        """
+        state = []
+        for i in range(self.nb_mec):
+            mec_cpu_percentage, mec_ram_percentage, mec_disk_percentage = self.get_rat(i)
+            state.extend([mec_cpu_percentage, mec_ram_percentage, mec_disk_percentage])
+            for j in range(self.nb_vnfs):
+                for k in range(len(self.mec[i].get_member())):
+                    if self.vnfs[j].vnf_name == self.mec[i].get_member()[k]:
+                        vnf_cpu_percentage, vnf_ram_percentage = self.get_sct(self.vnfs[j].vnf_name)
+                        state.extend([vnf_cpu_percentage, vnf_ram_percentage])
         if initial_state:
             if not self.initial_state:
                 self.initial_state = state
@@ -295,7 +313,7 @@ class ENV:
         """
         :return: Select a random action value
         """
-        return randint(1, len(self.vnfs) * (len(self.mec) + 2 * 3))
+        return randint(0, (len(self.vnfs) * (len(self.mec) + 2 * 3)) - 1)
 
     def step(self, action):
         """
@@ -315,7 +333,7 @@ class ENV:
 
         # Gathering vnf_id and type of the taken action
         vnf_id = math.ceil(action / (len(self.mec) + 2 * 3)) - 1
-        action = (len(self.mec) + 2 * 3) * (1 - (vnf_id + 1)) + action - 1
+        action = (len(self.mec) + 2 * 3) * (1 - (vnf_id + 1)) + action
         if action < len(self.mec):
             # Migrating or doing nothing is the source mec_id equal destination mec_id
             operation_success, action_time = self.migrate(vnf_id, set_of_actions[action])
