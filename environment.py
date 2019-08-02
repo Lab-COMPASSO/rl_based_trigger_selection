@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jul  9 13:51:00 2019
+
+@author: RaMy
+"""
 from random import randint, sample
 from mec import MEC
 from c_vnf import VNF
@@ -41,21 +48,21 @@ class ENV:
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
         for i in range(self.nb_mec):
             print("*********************************--  MEC number {} --******************************".format(i+1))
-            print(self.mec[i].mec_name)
-            print(self.mec[i].get_member())
-            print(self.mec[i].cpu)
-            print(self.mec[i].ram)
-            print(self.mec[i].disk)
-        print("###########################################################################")
-
+            print('MEC name: {}'.format(self.mec[i].mec_name))
+            print('MEC Members: {}'.format(self.mec[i].get_member()))
+            print('MEC cpu: {}'.format(self.mec[i].cpu))
+            print('MEC ram: {}'.format(self.mec[i].ram))
+            print('MEC disk: {}'.format(self.mec[i].disk))
+            print('#################################-- MEC Detailed Members: --#################################')
+            for j in range(self.nb_vnfs):
+                for k in range(len(self.mec[i].get_member())):
+                    if self.vnfs[j].vnf_name == self.mec[i].get_member()[k]:
+                        print("*********************************--  VNF number {} --******************************".format(j+1))
+                        print('VNF name: {}'.format(self.vnfs[j].vnf_name))
+                        print('VNF cpu: {}'.format(self.vnfs[j].cpu))
+                        print('VNF ram: {}'.format(self.vnfs[j].ram))
+                        print('VNF disk: {}'.format(self.vnfs[j].disk))
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
-        for i in range(self.nb_vnfs):
-            print("*********************************--  VNF number {} --******************************".format(i+1))
-            print(self.vnfs[i].vnf_name)
-            print(self.vnfs[i].cpu)
-            print(self.vnfs[i].ram)
-            print(self.vnfs[i].disk)
-        print("###########################################################################")
 
     def get_mec(self):
         """
@@ -169,6 +176,7 @@ class ENV:
                     if self.vnfs[j].vnf_name == self.mec[i].get_member()[k]:
                         vnf_cpu_percentage, vnf_ram_percentage = self.get_sct(self.vnfs[j].vnf_name)
                         state.extend([vnf_cpu_percentage, vnf_ram_percentage])
+        print(state)
         if initial_state:
             if not self.initial_state:
                 self.initial_state = state
@@ -184,6 +192,11 @@ class ENV:
         """
         # Control time
         migration_time = (self.max_c_disk / 1000) + 100
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print(migration_time)
+        print('I\'m the migrate function I received an order to migration {} to the MEC number {}'.
+              format(vnf_id, mec_dest_id))
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         if int(self.vnfs[vnf_id].ethnicity) == mec_dest_id:
             print("Container cannot be migrated to the same host !!! == Do Nothing")
             print('same-host: {}'.format(migration_time))
@@ -229,6 +242,12 @@ class ENV:
         """
         scale_up_time = (self.min_c_disk / 2) / 1000
         failure_time = (self.max_c_disk / 1000) + 100
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print(scale_up_time)
+        print(failure_time)
+        print('I\'m the scale UP function I received an order to scale UP {} for the VNF {}'.
+              format(resource_type, vnf_id))
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
 
         if resource_type == "CPU":
             cpu_resource_unit = randint(self.min_c_cpu, self.max_c_cpu)
@@ -255,6 +274,13 @@ class ENV:
         """
         scale_down_time = ((self.min_c_disk / 2) + 128) / 1000
         failure_time = (self.max_c_disk / 1000) + 100
+
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print(scale_down_time)
+        print(failure_time)
+        print('I\'m the scale down function I received an order to scale down {} for the VNF {}'.
+              format(resource_type, vnf_id))
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
 
         if resource_type == "CPU":
             if self.vnfs[vnf_id].cpu == 1:
@@ -284,6 +310,7 @@ class ENV:
                 return False, (1 / failure_time)
             disk_resource_unit = randint(self.min_c_disk, self.max_c_disk)
             while self.vnfs[vnf_id].disk - disk_resource_unit <= 0:
+                print('the selected value ')
                 disk_resource_unit = randint(self.min_c_disk, self.max_c_disk)
             self.mec[int(self.vnfs[vnf_id].ethnicity)].disk = self.mec[int(self.vnfs[vnf_id].ethnicity)].disk + \
                 disk_resource_unit
@@ -343,7 +370,7 @@ class ENV:
         else:
             # Scaling Down print("scale down")
             operation_success, action_time = self.scale_down(vnf_id, set_of_actions[action])
-        return self.get_state_(), self.reward(action_time), False, False
+        return self.get_dqn_state(), self.reward(action_time), False, False
 
     def save_topology(self, file_name):
         """

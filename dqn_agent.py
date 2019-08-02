@@ -1,5 +1,12 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jul  18 16:51:00 2019
+
+@author: RaMy
+"""
+
 import random
-import gym
 import numpy as np
 from collections import deque
 from keras.models import Sequential

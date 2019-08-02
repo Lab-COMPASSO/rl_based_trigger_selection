@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jul  9 13:51:00 2019
+
+@author: RaMy
+"""
+
 
 class MEC:
    

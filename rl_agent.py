@@ -1,6 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jul  13 15:54:23 2019
+
+@author: RaMy
+"""
 from environment import ENV
-from c_vnf import VNF
-from mec import MEC
 import random
 import numpy as np
 
