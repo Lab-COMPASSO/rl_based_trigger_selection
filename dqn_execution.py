@@ -19,8 +19,8 @@ min_cpu = 50
 max_cpu = 100
 min_ram = 50
 max_ram = 100
-min_disk = 4096
-max_disk = 12288
+min_disk = 131072
+max_disk = 524288
 # Containers
 min_c_cpu = 1
 max_c_cpu = 4
@@ -39,7 +39,7 @@ env = ENV(nb_mec, nb_vnfs, min_cpu, max_cpu, min_ram, max_ram, min_disk, max_dis
           max_c_ram, min_c_disk, max_c_disk)
 env.generate_mec()
 env.generate_vnfs()
-env.save_topology("environment")
+# env.save_topology("environment")
 
 # Computation of action/states size
 action_size = len(env.vnfs) * (len(env.mec) + 2 * 3)
@@ -55,7 +55,7 @@ agent = dqn(state_size, action_size)
 done = False
 
 for e in range(episodes):
-    state = env.get_dqn_state(True)
+    state = env.get_state(True)
     state = np.reshape(state, [1, state_size])
     for time in range(max_env_steps):
         print('@@@@@@@@@@@@-- The Current environment --@@@@@@@@@@@@')

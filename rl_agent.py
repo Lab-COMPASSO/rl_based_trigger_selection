@@ -59,7 +59,7 @@ def orchestration():
     for episode in range(total_episodes):
         # Reset the environment
         # TODO: reseting always the same topo will allow to converge but exploring the other possibilities is a must
-        state = env.get_state_(True)  # You should always have the initial generated topology
+        state = env.get_state(True)  # You should always have the initial generated topology
         step = 0
         total_rewards = 0
 
