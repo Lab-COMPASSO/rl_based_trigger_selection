@@ -19,6 +19,9 @@ class DQNAgent:
                  gamma=0.95, alpha=.001, alpha_decay=0.995):
 
         self.memory = deque(maxlen=100000)
+        self.plotting = []
+        self.rewards = []
+        self.ave_reward_list = []
         self.state_size = state_size
         self.action_size = action_size
         self.epsilon = epsilon                          # Exploration rate
@@ -41,6 +44,14 @@ class DQNAgent:
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
 
+    def plotting_data(self, h):
+        self.plotting.append(h['loss'])
+
+    def final_data(self):
+        print(self.plotting)
+        print(len(self.plotting))
+        return self.plotting
+
     def act(self, state):
         if np.random.rand() <= self.epsilon:
             return random.randrange(1, self.action_size)
@@ -56,7 +67,13 @@ class DQNAgent:
                           np.amax(self.model.predict(next_state)[0]))
             target_f = self.model.predict(state)
             target_f[0][action] = target
-            self.model.fit(state, target_f, epochs=1, verbose=0)
+            H = self.model.fit(state, target_f, epochs=1, verbose=0)
+            self.plotting_data(H.history)
+            self.rewards.append(target)
+            if (len(self.rewards)) % 100 == 0:
+                ave_reward = np.mean(self.rewards)
+                self.ave_reward_list.append(ave_reward)
+                self.rewards = []
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 

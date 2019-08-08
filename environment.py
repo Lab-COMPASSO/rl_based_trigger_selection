@@ -9,7 +9,6 @@ from random import randint, sample, randrange
 from mec import MEC
 from c_vnf import VNF
 import pickle
-import time
 import math
 
 
@@ -141,16 +140,18 @@ class ENV:
         :return: migrate a given container from one MEC to another one, True if migrated otherwise False
         """
         # Control time
-        migration_time = (self.max_c_disk / 1000) + 100
+        failure_time = (self.max_c_disk / 1000) + 100
+        staying_time = (self.min_c_disk / 4) / 1000
+
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-        print(migration_time)
+        print(failure_time)
         print('I\'m the migrate function I received an order to migrate {} belonging to MEC {} to the MEC number {}'.
               format(vnf_id, self.vnfs[vnf_id].ethnicity, mec_dest_id))
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         if int(self.vnfs[vnf_id].ethnicity) == mec_dest_id:
             print("Container cannot be migrated to the same host !!! == Do Nothing")
-            print('same-host: {}'.format(migration_time))
-            return False, (1 / migration_time)
+            print('same-host: {}'.format(staying_time))
+            return False, (1 / staying_time)
         if self.mec[mec_dest_id].cpu_availability(self.vnfs[vnf_id].cpu) and \
                 self.mec[mec_dest_id].ram_availability(self.vnfs[vnf_id].ram) and \
                 self.mec[mec_dest_id].disk_availability(self.vnfs[vnf_id].disk):
@@ -168,14 +169,14 @@ class ENV:
 
             # Migration time based on the disk size
             migration_time = self.vnfs[vnf_id].disk / 1000
-            time.sleep(migration_time)
+            # time.sleep(migration_time)
             print('migration: {}'.format(migration_time))
             return True, (1 / migration_time)
 
         # Roll-back procedure in case of migration's failure
         # Control time
-        print('roll-back: {}'.format(migration_time))
-        return False, (1 / migration_time)
+        print('roll-back: {}'.format(failure_time))
+        return False, (1 / failure_time)
 
     def scale_up(self, vnf_id, resource_type):
         """
