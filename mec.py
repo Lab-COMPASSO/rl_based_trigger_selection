@@ -17,14 +17,10 @@ class MEC:
         self.list_of_c_vnfs = []
 
     def set_member(self, c_vnf):
-        print('The Current members are: {}'.format(self.list_of_c_vnfs))
         self.list_of_c_vnfs.append(c_vnf)
-        print('The Next members are: {}'.format(self.list_of_c_vnfs))
 
     def del_member(self, c_vnf):
-        print('The Current members are: {}'.format(self.list_of_c_vnfs))
         self.list_of_c_vnfs.remove(c_vnf)
-        print('The Next members are: {}'.format(self.list_of_c_vnfs))
 
     def get_member(self):
         return self.list_of_c_vnfs
