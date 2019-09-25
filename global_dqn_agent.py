@@ -63,6 +63,7 @@ class GlobalDQNAgent:
         self.memory.append((state, action, reward, next_state, done))
 
     def act(self, state):
+        # Selecting the Action based on a epsilon-greedy
         if np.random.rand() <= self.epsilon:
             return random.randrange(1, self.action_size)
         act_values = self.model.predict(state)
@@ -70,6 +71,7 @@ class GlobalDQNAgent:
         return np.argmax(act_values[0])  # returns action
 
     def replay_dqn(self, batch_size):
+        # Deep Q network based on memory reply
         mini_batch = random.sample(self.memory, batch_size)
         for state, action, reward, next_state, done in mini_batch:
             target = reward
@@ -92,7 +94,11 @@ class GlobalDQNAgent:
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
+    def replay_dqn_batch(self, batch_size):
+        pass
+
     def replay_fixed_target_dqn(self, batch_size):
+        # Fixed target network based on memory reply
         mini_batch = random.sample(self.memory, batch_size)
         for state, action, reward, next_state, done in mini_batch:
             target = self.model.predict(state)
@@ -114,13 +120,55 @@ class GlobalDQNAgent:
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
+    def replay_fixed_target_dqn_batch(self, batch_size):
+        pass
+
+    def replay_double_dqn(self, batch_size):
+        # Double Deep Q network
+        mini_batch = random.sample(self.memory, batch_size)
+        for state, action, reward, next_state, done in mini_batch:
+            target = self.model.predict(state)
+            if done:
+                target[0][action] = reward
+            else:
+                predicted_value = self.model.predict(next_state)
+                best_action = np.argmax(predicted_value)
+                # print('the predicted value is: {}'.format(predicted_value))
+                # print('the best action is: {}'.format(best_action))
+                double_q_value = self.target_model.predict(next_state)[0]
+                # print('the predicted values: {}'.format(double_q_value))
+                # print('the value of the action {} is: {}'.format(best_action, double_q_value[best_action]))
+                target[0][best_action] = (reward + self.gamma * double_q_value[best_action])
+
+            self.predict[self.i] = {
+                "target[0][action]": target[0][action],
+                "target_best_action": double_q_value[best_action],
+                "target[0][best_action]": target[0][best_action]
+            }
+            self.i += 1
+            H = self.model.fit(state, target, epochs=1, verbose=0)
+            self.loss.append(H.history['loss'])
+            self.rewards.append(target[0][best_action])
+            self.tot_rewards.append(target)
+            if (len(self.rewards)) % 100 == 0:
+                ave_reward = np.mean(self.rewards)
+                self.ave_reward_list.append(ave_reward)
+                self.rewards = []
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
+
+    def replay_double_dqn_batch(self, batch_size):
+        pass
+
     def load(self, name):
+        # Load the neural network weights
         self.model.load_weights("model_{}.h5".format(name))
         self.model.compile(loss='mse', optimizer=Adam(lr=self.alpha))
         print("Outputting all the Loaded weights")
         print(self.model.get_weights())
 
     def save(self, name):
+        # Save the neural network weights
         self.model.save_weights(name + ".h5", overwrite=True)
         with open(name + ".json", "w") as outfile:
             json.dump(self.model.to_json(), outfile)

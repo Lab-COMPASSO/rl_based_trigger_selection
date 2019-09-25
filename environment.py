@@ -91,7 +91,7 @@ class ENV:
                 en.write('MEC disk: {}'.format(self.mec[i].disk))
                 en.write('\n')
                 en.write('#################################-- MEC {} Detailed Members: --#################################'
-                      .format(i))
+                         .format(i))
                 en.write('\n')
                 for j in range(self.nb_vnfs):
                     for k in range(len(self.mec[i].get_member())):
@@ -121,8 +121,10 @@ class ENV:
         """
 
         for i in range(self.nb_mec):
-            self.mec[i] = MEC(i, randint(self.min_cpu, self.max_cpu), randint(self.min_ram, self.max_ram),
-                              randint(self.min_disk, self.max_disk))
+            cpu = randint(self.min_cpu, self.max_cpu)
+            ram = randint(self.min_ram, self.max_ram)
+            disk = randint(self.min_disk, self.max_disk)
+            self.mec[i] = MEC(i, cpu, ram, disk)
 
     def generate_vnfs(self):
         """
@@ -190,7 +192,7 @@ class ENV:
             en.write('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
             en.write('\n')
             en.write('I\'m the migrate function I received an order to migrate VNF {} belonging to MEC {} to the MEC number {}'.
-              format(vnf_id, self.vnfs[vnf_id].ethnicity, mec_dest_id))
+                     format(vnf_id, self.vnfs[vnf_id].ethnicity, mec_dest_id))
             en.write('\n')
             en.write('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
             en.write('\n')
@@ -208,6 +210,7 @@ class ENV:
                 self.mec[int(self.vnfs[vnf_id].ethnicity)].cpu += self.vnfs[vnf_id].cpu
                 self.mec[int(self.vnfs[vnf_id].ethnicity)].ram += self.vnfs[vnf_id].ram
                 self.mec[int(self.vnfs[vnf_id].ethnicity)].disk += self.vnfs[vnf_id].disk
+                self.graph.remove_node('VNF-{}'.format(vnf_id))
 
                 # Addition of the container's details to the destination MEC
                 self.mec[mec_dest_id].set_member(vnf_id)
@@ -240,7 +243,7 @@ class ENV:
             en.write('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
             en.write('\n')
             en.write('I\'m the scale UP function I received an order to scale UP {} resources for the VNF {}'.
-              format(resource_type, vnf_id))
+                     format(resource_type, vnf_id))
             en.write('\n')
             en.write('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
             en.write('\n')
@@ -398,5 +401,3 @@ class ENV:
         self.max_c_disk = my_data[13]
         self.mec = my_data[14]
         self.vnfs = my_data[15]
-
-
